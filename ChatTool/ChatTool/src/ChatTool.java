@@ -19,7 +19,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
 import javax.sound.sampled.AudioSystem;
@@ -42,7 +41,7 @@ public class ChatTool {
     private JFrame frame;
 
     // MySQL数据库连接信息
-    private String dbUrl = "jdbc:mysql://172.30.15.90:3306/chattool?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
+    private String dbUrl = "jdbc:mysql://172.30.15.207:3306/chattool?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
     private String dbUser = "root";
     private String dbPassword = "root";
     //当前用户
@@ -51,7 +50,11 @@ public class ChatTool {
     // 登录窗口组件
     private JTextField usernameField;
     private JPasswordField passwordField;
+    private JPasswordField confirmpasswordField;
     private JButton loginButton;
+    private JButton logoutButton;
+    private JButton registButton;
+    private JButton regButton;
 
     // 好友窗口组件
     private JList<String> friendList;
@@ -84,13 +87,15 @@ public class ChatTool {
 
     // 运行聊天工具
     public void run() {
-        // 创建登录窗口
+        // 创建初始窗口
+        creatInitWindow();
+    }
+    public void creatInitWindow() {
+        frame = new JFrame("Let‘s Chat v"+ VERSION);
         createLoginWindow();
     }
-
     // 创建登录窗口
     private void createLoginWindow() {
-        frame = new JFrame(STR."Let‘s Chat v\{VERSION}");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(300, 200);
 
@@ -112,6 +117,7 @@ public class ChatTool {
         passwordField.setText(PASSWORD);
 
         loginButton = new JButton("Login");
+        registButton =new JButton("Register");
         loginButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 String username = usernameField.getText();
@@ -127,12 +133,84 @@ public class ChatTool {
                 }
             }
         });
+        registButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                frame.getContentPane().removeAll();
+                createRegistWindow();
+            }
+        });
         panel.add(loginButton);
-
+        panel.add(registButton);
         frame.getContentPane().add(panel);
         frame.setVisible(true);
     }
+    //创建注册窗口
+    public void createRegistWindow()
+    {
+        frame.setTitle("Register v"+ VERSION);
+        frame.setSize(300, 200);
+        JPanel panel = new JPanel();
+        //frame.setLocation(650,330);
+        panel.setLayout(new GridLayout(4, 2));
 
+        panel.add(new JLabel("Input Username:"));
+        usernameField = new JTextField();
+        panel.add(usernameField);
+
+        panel.add(new JLabel("Input Password:"));
+        passwordField = new JPasswordField();
+        panel.add(passwordField);
+
+        panel.add(new JLabel("Confirm Password"));
+        confirmpasswordField = new JPasswordField();
+        panel.add(confirmpasswordField);
+
+        regButton = new JButton("Register");
+        regButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                Register(usernameField.getName(),new String(passwordField.getPassword()),new String(confirmpasswordField.getPassword()));
+            }
+        });
+        panel.add(regButton);
+        frame.getContentPane().add(panel);
+        frame.setVisible(true);
+    }
+    public boolean Register(String username, String password, String confirmpwd){
+        if(username == null || password == null){
+            JOptionPane.showMessageDialog(frame,"Please input username or password");
+        }
+       else
+        {
+            if(!password.equals(confirmpwd)){
+            JOptionPane.showMessageDialog(frame,"Passwords does not match!");
+        }
+            else if(isExist(username)){
+                JOptionPane.showMessageDialog(frame,"用户名已存在");
+            }
+        }
+        return false;
+    }
+
+    public boolean isExist(String username){
+        try{
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
+            String query = "SELECT * FROM users WHERE username=?";
+            PreparedStatement stmt = conn.prepareStatement(query);
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+            boolean isExist = rs.next();
+            rs.close();
+            stmt.close();
+            conn.close();
+            return isExist;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
     // 验证用户登录
     private boolean validateUser(String username, String password) {
         try {
@@ -191,28 +269,39 @@ public class ChatTool {
 
         // 打开聊天窗口按钮
         openChatButton = new JButton("Chat it");
-        openChatButton.addActionListener(new ActionListener() {
+        logoutButton = new JButton("Log Out");
+        logoutButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                String selectedFriend = friendList.getSelectedValue();
-                if (selectedFriend != null) {
+                int isLogout = JOptionPane.showConfirmDialog(frame,"Sure to Log out?","Logout",JOptionPane.YES_NO_OPTION );
+                if(isLogout == 0) {
                     frame.getContentPane().removeAll();
-                    //night 1130 ok
-                    //System.out.println(selectedFriend);
-                    createChatWindow(selectedFriend);
-                    ISEXIT = true;
-
-                } else {
-                    JOptionPane.showMessageDialog(frame, "Select a friend to chat with", "Chat",
-                            JOptionPane.INFORMATION_MESSAGE);
+                    createLoginWindow();
                 }
             }
         });
+        openChatButton.addActionListener(new ActionListener() {
+                                             public void actionPerformed(ActionEvent e) {
+                                                 String selectedFriend = friendList.getSelectedValue();
+                                                 if (selectedFriend != null) {
+                                                     frame.getContentPane().removeAll();
+                                                     //night 1130 ok
+                                                     //System.out.println(selectedFriend);
+                                                     createChatWindow(selectedFriend);
+                                                     ISEXIT = true;
+
+                                                 } else {
+                                                     JOptionPane.showMessageDialog(frame, "Select a friend to chat with", "Chat",
+                                                             JOptionPane.INFORMATION_MESSAGE);
+                                                 }
+                                             }
+                                         }
+        );
 
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
         panel.add(new JScrollPane(friendList), BorderLayout.CENTER);
-        panel.add(openChatButton, BorderLayout.SOUTH);
-
+        panel.add(openChatButton, BorderLayout.NORTH);
+        panel.add(logoutButton, BorderLayout.SOUTH);
         frame.getContentPane().add(panel);
         frame.setVisible(true);
     }
@@ -321,7 +410,7 @@ public class ChatTool {
                     //sendMessage(friend, "");  // 调用发送消息的方法
                 }
 
-                }
+            }
         }, DELAY, PERIOD);
 
     }
